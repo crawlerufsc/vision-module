@@ -1,7 +1,7 @@
 # require CMake 2.8 or greater
 cmake_minimum_required(VERSION 2.8)
 
-# declare my-recognition project
+# declare project name
 project(driveless-vision-module)
 
 # import jetson-inference and jetson-utils packages.
@@ -37,7 +37,7 @@ SET(TARGET_H
 )
 
 cuda_add_executable(
-    vision 
+    vision-bin 
     vision.cpp 
     occupancy_grid/occupancy_grid_impl.cpp 
     control/process_handler_impl.cpp 
@@ -47,4 +47,4 @@ cuda_add_executable(
 )
 
 # link my-recognition to jetson-inference library
-target_link_libraries(vision jetson-inference ${OpenCV_LIBS})
+target_link_libraries(vision-bin jetson-inference ${OpenCV_LIBS})
