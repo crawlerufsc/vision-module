@@ -1,5 +1,5 @@
-#ifndef __SOURCE_DATASET_H
-#define __SOURCE_DATASET_H
+#ifndef __SOURCE_IMAGE_DATASET_H
+#define __SOURCE_IMAGE_DATASET_H
 
 #include <string>
 #include <iostream>
@@ -10,11 +10,13 @@
 // #include <opencv2/imgcodecs.hpp>
 // #include <opencv2/highgui.hpp>
 #include <jetson-utils/loadImage.h>
+#include <chrono>
+#include <thread>
 
 #include "source_camera.h"
 #include "../model/vision_formats.h"
 
-class SourceCameraDatasetImpl : public SourceCamera
+class SourceImageDatasetImpl : public SourceCamera
 {
 private:
     std::vector<std::string> *input;
@@ -28,11 +30,13 @@ private:
 
 private:
     void delayFrameRate() {
-        sleepMs(1000/frameRate);
+        if (frameRate <= 0) return;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000/frameRate));
     }
 
 public:
-    SourceCameraDatasetImpl(uint32_t width, uint32_t height, uint32_t frameRate)
+    SourceImageDatasetImpl(uint32_t width, uint32_t height, uint32_t frameRate)
     {
         input = new std::vector<std::string>();
         this->width = width;
@@ -44,13 +48,13 @@ public:
         cudaMalloc((void **)&cudaBuffer, sizeof(SourceImageFormat) * width * height);
     }
 
-    ~SourceCameraDatasetImpl()
+    ~SourceImageDatasetImpl()
     {
         delete input;
         cudaFree(cudaBuffer);
     }
 
-    SourceCameraDatasetImpl *AddSource(std::string path)
+    SourceImageDatasetImpl *AddSource(std::string path)
     {
         input->push_back(path);
         return this;
@@ -72,7 +76,7 @@ public:
         return frameRate;
     }
 
-    virtual SourceCameraDatasetImpl * RepeatFrame(uint32_t times)
+    virtual SourceImageDatasetImpl * RepeatFrame(uint32_t times)
     {
         this->repeat_for = times;
         return this;

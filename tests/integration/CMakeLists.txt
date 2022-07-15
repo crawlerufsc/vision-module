@@ -28,7 +28,7 @@ link_directories(/usr/lib/aarch64-linux-gnu/tegra)
 SET(TARGET_H
     ../../model/vision_formats.h
     ../../acquisition/source_camera.h
-    ../../acquisition/source_dataset.h
+    ../../acquisition/source_image_dataset.h
     ../../acquisition/source_camera_gst.h
     ../../control/process_handler.h
     ../../log/logger.h

@@ -31,6 +31,8 @@ link_directories(/usr/lib/aarch64-linux-gnu/tegra)
 SET(TARGET_H
     ../../acquisition/source_camera.h
     ../../acquisition/source_camera_gst.h
+    ../../acquisition/source_image_dataset.h
+    ../../acquisition/source_video_dataset.h
 )
     
 
@@ -38,9 +40,13 @@ cuda_add_executable(usb2file ../../acquisition/test_usb_to_file.cpp)
 cuda_add_executable(usbview ../../acquisition/test_usb_viewer.cpp)
 cuda_add_executable(aqtst ../../acquisition/test_source_dataset.cpp)
 cuda_add_executable(usbremote ../../acquisition/test_usb_remote_viewer.cpp)
+cuda_add_executable(stream_video ../../acquisition/test_stream_videofile.cpp)
 
 # link my-recognition to jetson-inference library
 target_link_libraries(usb2file jetson-inference ${OpenCV_LIBS})
 target_link_libraries(usbview jetson-inference ${OpenCV_LIBS})
+target_link_libraries(aqtst jetson-inference ${OpenCV_LIBS})
 target_link_libraries(usbremote jetson-inference ${OpenCV_LIBS})
+target_link_libraries(stream_video jetson-inference ${OpenCV_LIBS})
+
 

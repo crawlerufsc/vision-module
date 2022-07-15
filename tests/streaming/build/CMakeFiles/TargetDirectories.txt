@@ -1,3 +1,0 @@
-/home/cristiano/Documents/Projects/Mestrado/Project/driveless/vision/tests/streaming/build/CMakeFiles/stream_tst.dir
-/home/cristiano/Documents/Projects/Mestrado/Project/driveless/vision/tests/streaming/build/CMakeFiles/edit_cache.dir
-/home/cristiano/Documents/Projects/Mestrado/Project/driveless/vision/tests/streaming/build/CMakeFiles/rebuild_cache.dir

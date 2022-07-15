@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../acquisition/source_dataset.h"
+#include "../../acquisition/source_image_dataset.h"
 #include "../../segmentation/neuralnet_segmentation.h"
 #include "../../occupancy_grid/occupancy_grid.h"
 #include "../../control/process_handler.h"
@@ -27,10 +27,19 @@ public:
 class DummyOccupancyGrid : public OccupancyGrid
 {
 public:
-    char *ComputeOcuppancyGrid(void *frame, int2 &maskSize) override
+    char *ComputeOcuppancyGrid(void *frame, int width, int height) override
     {
         return nullptr;
     };
+
+    int GetWidth() override
+    {
+        return 0;
+    }
+    int GetHeight() override
+    {
+        return 0;
+    }
 };
 
 class DummyProcHandler : public ProcHandler
@@ -51,11 +60,14 @@ public:
     virtual void FrameSkipSegmentationMaskError() override
     {
     }
-    virtual void FrameProcessResult(void *result_value) override
+    virtual void FrameProcessResult(uchar3 *result_value, uint32_t width, uint32_t height) override
     {
     }
-    virtual void FrameCaptured(uchar3 *result_value) override
+    virtual void FrameCaptured(SourceImageFormat *result_value, uint32_t width, uint32_t height) override
     {
+    }
+    virtual void FrameSegmentationSuccess(SourceImageFormat *result_value, uint32_t width, uint32_t height) override {
+
     }
 };
 
@@ -63,7 +75,7 @@ extern Logger *NewDebugLoggerInstance();
 
 int main(int argc, char **argv)
 {
-    SourceCameraDatasetImpl *camera = new SourceCameraDatasetImpl(384, 216);
+    SourceImageDatasetImpl *camera = new SourceImageDatasetImpl(384, 216, -1);
     camera
         ->AddSource("../../imgs/0.png")
         ->AddSource("../../imgs/1.png")

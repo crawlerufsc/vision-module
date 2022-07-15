@@ -20,7 +20,7 @@
 #include <jetson-inference/segNet.h>
 
 #include "../../model/vision_formats.h"
-#include "../../acquisition/source_dataset.h"
+#include "../../acquisition/source_image_dataset.h"
 #include "../../acquisition/source_camera_gst.h"
 #include "../../occupancy_grid/occupancy_grid.h"
 #include "../../control/process_handler.h"
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     //                            ->withSize(640, 480)
     //                            ->build();
 
-    SourceCamera *camera = (new SourceCameraDatasetImpl(800, 600, 30))
+    SourceCamera *camera = (new SourceImageDatasetImpl(800, 600, 30))
                                 ->AddSource(basePath + "/0.png")
                                 ->AddSource(basePath + "/1.png")
                                 ->AddSource(basePath + "/2.png")

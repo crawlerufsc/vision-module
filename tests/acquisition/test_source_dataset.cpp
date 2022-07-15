@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <../../acquisition/source_dataset.h>
+#include <../../acquisition/source_image_dataset.h>
 #include "image_utils.h"
 
 // v4l2-ctl --list-formats-ext -d /dev/video1
@@ -14,7 +14,7 @@ using namespace std;
 typedef uchar3 pixelType;
 bool signal_received = false;
 bool test_capture();
-bool test_img(SourceCameraDatasetImpl *camera, std::string path);
+bool test_img(SourceImageDatasetImpl *camera, std::string path);
 
 int main(int argc, char **argv)
 {
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 
 bool test_capture()
 {
-    SourceCameraDatasetImpl *camera = new SourceCameraDatasetImpl(384, 216);
+    SourceImageDatasetImpl *camera = new SourceImageDatasetImpl(384, 216, 0);
 
     camera
         ->AddSource("../../imgs/0.png")
@@ -48,7 +48,7 @@ bool test_capture()
     return true;
 }
 
-bool test_img(SourceCameraDatasetImpl *camera, std::string path)
+bool test_img(SourceImageDatasetImpl *camera, std::string path)
 {
     char *file_data = (char *)ImageUtils::TestReadfile(path);
     uint32_t size = ImageUtils::TestFileSize(path);

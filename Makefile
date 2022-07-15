@@ -7,7 +7,7 @@ bin:
 	cp neuralnet/trained/colors.txt build/net
 	cp neuralnet/trained/hrnet_w18.onnx build/net
 	cd build && cmake ..
-	make
+	cd build && make
 	cp build/vision-bin .
 
 clean:
