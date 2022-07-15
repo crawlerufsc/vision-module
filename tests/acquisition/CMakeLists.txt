@@ -36,11 +36,23 @@ SET(TARGET_H
 )
     
 
-cuda_add_executable(usb2file ../../acquisition/test_usb_to_file.cpp)
-cuda_add_executable(usbview ../../acquisition/test_usb_viewer.cpp)
-cuda_add_executable(aqtst ../../acquisition/test_source_dataset.cpp)
-cuda_add_executable(usbremote ../../acquisition/test_usb_remote_viewer.cpp)
-cuda_add_executable(stream_video ../../acquisition/test_stream_videofile.cpp)
+cuda_add_executable(usb2file 
+    test_usb_to_file.cpp
+)
+cuda_add_executable(usbview 
+    test_usb_viewer.cpp
+)
+cuda_add_executable(aqtst 
+    test_source_dataset.cpp
+)
+cuda_add_executable(usbremote 
+    test_usb_remote_viewer.cpp
+)
+cuda_add_executable(stream_video 
+    test_stream_videofile.cpp
+    ../../log/logger_debug_stdout.cpp
+    ../../communication/stream_server.cpp
+)
 
 # link my-recognition to jetson-inference library
 target_link_libraries(usb2file jetson-inference ${OpenCV_LIBS})

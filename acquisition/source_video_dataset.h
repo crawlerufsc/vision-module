@@ -14,34 +14,34 @@ class SourceVideoDatasetImpl : public SourceCamera
 private:
     videoSource *input;
 
-    videoOptions *buildOptions(std::string path, uint32_t width, uint32_t height)
+    void buildInput(std::string path, uint32_t width, uint32_t height)
     {
-        videoOptions *options = new videoOptions();
-        options->ioType = videoOptions::INPUT;
-        options->zeroCopy = true;
+        videoOptions options;
+        options.ioType = videoOptions::INPUT;
+        options.zeroCopy = true;
         std::ostringstream device;
         device << "file://" << path;
-        options->resource = device.str().c_str();
+        options.resource = device.str().c_str();
+        options.codec = videoOptions::CODEC_MPEG4;
 
         if (width > 0)
-            options->width = width;
-        
+            options.width = width;
+
         if (height > 0)
-            options->height = height;
-       
+            options.height = height;
+
+        input = videoSource::Create(options);
     }
 
 public:
     SourceVideoDatasetImpl(std::string path)
     {
-        videoOptions * options = buildOptions(path, -1, -1);
-        input = gstCamera::Create(*options);
+        buildInput(path, -1, -1);
     }
 
     SourceVideoDatasetImpl(std::string path, uint32_t width, uint32_t height)
     {
-        videoOptions * options = buildOptions(path, width, height);
-        input = gstCamera::Create(*options);
+        buildInput(path, width, height);
     }
 
     ~SourceVideoDatasetImpl()
@@ -50,14 +50,16 @@ public:
         delete input;
     }
 
-    void initWithOptions(videoOptions &options) override {
-        
-        if (input != nullptr) {
+    void initWithOptions(videoOptions &options) override
+    {
+
+        if (input != nullptr)
+        {
             input->Close();
             delete input;
         }
 
-        input = gstCamera::Create(options);
+        input = videoSource::Create(options);
     }
 
     uint32_t GetWidth() override
