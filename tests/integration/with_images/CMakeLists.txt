@@ -26,25 +26,26 @@ include_directories(/usr/include/gstreamer-1.0 /usr/lib/aarch64-linux-gnu/gstrea
 link_directories(/usr/lib/aarch64-linux-gnu/tegra)
 
 SET(TARGET_H
-    ../../model/vision_formats.h
-    ../../acquisition/source_camera.h
-    ../../acquisition/source_image_dataset.h
-    ../../acquisition/source_camera_gst.h
-    ../../control/process_handler.h
-    ../../log/logger.h
-    ../../segmentation/neuralnet_segmentation.h
-    ../../communication/stream_server.h
+    ../../../model/vision_formats.h
+    ../../../acquisition/source_camera.h
+    ../../../acquisition/source_image_dataset.h
+    ../../../acquisition/source_camera_gst.h
+    ../../../control/process_handler.h
+    ../../../control/process_pipeline.h
+    ../../../log/logger.h
+    ../../../segmentation/neuralnet_segmentation_pipeline.h
+    ../../../communication/stream_server.h
 )
 
 
 cuda_add_executable(
     vision-tst
     vision.cpp 
-    ../../occupancy_grid/occupancy_grid_impl.cpp 
-    ../../control/process_handler_impl.cpp 
-    ../../log/logger_debug_stdout.cpp 
-    ../../segmentation/neuralnet_segmentation.cpp
-    ../../communication/stream_server.cpp
+    ../../../occupancy_grid/occupancy_grid_impl.cpp 
+    ../../../control/process_handler_impl.cpp 
+    ../../../log/logger_debug_stdout.cpp 
+    ../../../segmentation/neuralnet_segmentation_pipeline.cpp
+    ../../../communication/stream_server.cpp
 )
 
 # link my-recognition to jetson-inference library

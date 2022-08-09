@@ -19,12 +19,15 @@
 #include <jetson-utils/cudaMappedMemory.h>
 #include <jetson-inference/segNet.h>
 
-#include "model/vision_formats.h"
-#include "acquisition/source_camera_gst.h"
-#include "occupancy_grid/occupancy_grid.h"
-#include "control/process_handler.h"
-#include "log/logger.h"
-#include "segmentation/neuralnet_segmentation_pipeline.h"
+#include "../../../model/vision_formats.h"
+#include "../../../acquisition/source_image_dataset.h"
+#include "../../../acquisition/source_camera_gst.h"
+#include "../../../occupancy_grid/occupancy_grid.h"
+#include "../../../control/process_handler.h"
+#include "../../../control/process_pipeline.h"
+#include "../../../log/logger.h"
+#include "../../../segmentation/neuralnet_segmentation_pipeline.h"
+
 
 using namespace std;
 using namespace cv;
@@ -54,11 +57,20 @@ void sig_handler(int val)
 
 int main(int argc, char **argv)
 {
-    SourceCamera *camera = SourceCameraUSBImpl::begin()
-                               ->device("/dev/video1")
-                               ->withSize(640, 480)
-                               ->build();
+    std::string basePath = "../../../imgs";
 
+
+    SourceCamera *camera = (new SourceImageDatasetImpl(800, 600, 30))
+                                ->AddSource(basePath + "/0.png")
+                                ->AddSource(basePath + "/1.png")
+                                ->AddSource(basePath + "/2.png")
+                                ->AddSource(basePath + "/3.png")
+                                ->AddSource(basePath + "/4.png")
+                                ->AddSource(basePath + "/5.png")
+                                ->AddSource(basePath + "/6.png")
+                                ->AddSource(basePath + "/7.png")
+                                ->RepeatFrame(30);
+                                
     OccupancyGrid *computeOG = NewOccupancyGridImplInstance();
 
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
@@ -67,12 +79,12 @@ int main(int argc, char **argv)
                                  "net/hrnet_w18.onnx",
                                  "net/classes.txt",
                                  "net/colors.txt",
-                                 "data",
-                                 "score_fr_21_classes",
+                                 "input.1",
+                                 "3545",                                
                                  10,
                                  precisionType::TYPE_FP16,
                                  deviceType::DEVICE_GPU,
-                                 true);
+                                 false);
 
     visionProc = new NeuralNetSegmentationPipeline(camera, net, computeOG, procHandler, logger);
 

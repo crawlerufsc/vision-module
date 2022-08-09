@@ -19,15 +19,15 @@
 #include <jetson-utils/cudaMappedMemory.h>
 #include <jetson-inference/segNet.h>
 
-#include "../../model/vision_formats.h"
-#include "../../acquisition/source_image_dataset.h"
-#include "../../acquisition/source_camera_gst.h"
-#include "../../occupancy_grid/occupancy_grid.h"
-#include "../../control/process_handler.h"
-#include "../../log/logger.h"
-#include "../../segmentation/neuralnet_segmentation.h"
-
-// https://gist.github.com/jungle-cat
+#include "../../../model/vision_formats.h"
+#include "../../../acquisition/source_image_dataset.h"
+#include "../../../acquisition/source_video_dataset.h"
+#include "../../../acquisition/source_camera_gst.h"
+#include "../../../occupancy_grid/occupancy_grid.h"
+#include "../../../control/process_handler.h"
+#include "../../../control/process_pipeline.h"
+#include "../../../log/logger.h"
+#include "../../../segmentation/neuralnet_segmentation_pipeline.h"
 
 using namespace std;
 using namespace cv;
@@ -37,7 +37,7 @@ using namespace chrono;
 
 extern OccupancyGrid *NewOccupancyGridImplInstance();
 extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
-NeuralNetVision *visionProc;
+ProcessPipeline *visionProc;
 
 #ifdef DEBUG
 extern Logger *NewDebugLoggerInstance();
@@ -51,30 +51,14 @@ void sig_handler(int val)
     if (val == SIGINT)
     {
         LogVerbose("received SIGINT\n");
-        visionProc->Terminate();
+        visionProc->terminate();
     }
 }
 
 int main(int argc, char **argv)
 {
-    std::string basePath = "../../imgs";
+    SourceCamera *camera = new SourceVideoDatasetImpl("/home/nvidia/Mestrado/Project/20210603_162058.mp4",800,600);
 
-    // SourceCamera *camera = SourceCameraUSBImpl::begin()
-    //                            ->device("/dev/video1")
-    //                            ->withSize(640, 480)
-    //                            ->build();
-
-    SourceCamera *camera = (new SourceImageDatasetImpl(800, 600, 30))
-                                ->AddSource(basePath + "/0.png")
-                                ->AddSource(basePath + "/1.png")
-                                ->AddSource(basePath + "/2.png")
-                                ->AddSource(basePath + "/3.png")
-                                ->AddSource(basePath + "/4.png")
-                                ->AddSource(basePath + "/5.png")
-                                ->AddSource(basePath + "/6.png")
-                                ->AddSource(basePath + "/7.png")
-                                ->RepeatFrame(30);
-                                
     OccupancyGrid *computeOG = NewOccupancyGridImplInstance();
 
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
@@ -90,12 +74,11 @@ int main(int argc, char **argv)
                                  deviceType::DEVICE_GPU,
                                  false);
 
-    //segNet *net = nullptr;
-    visionProc = new NeuralNetVision(camera, net, computeOG, procHandler, logger);
+    visionProc = new NeuralNetSegmentationPipeline(camera, net, computeOG, procHandler, logger);
 
     if (signal(SIGINT, sig_handler) == SIG_ERR)
         LogError("can't catch SIGINT\n");
 
-    visionProc->LoopUntilSignaled();
+    visionProc->run();
     return 0;
 }

@@ -1,7 +1,9 @@
-#include "neuralnet_segmentation.h"
+#include "neuralnet_segmentation_pipeline.h"
+#include "../control/process_handler.h"
 
-bool NeuralNetVision::allocBuffers(int width, int height, uint32_t flags)
+bool NeuralNetSegmentationPipeline::allocBuffers(int width, int height, uint32_t flags)
 {
+    printf("trying to allocate %ux%u buffers\n", width, height);
     // check if the buffers were already allocated for this size
     if (imgOverlay != NULL && width == overlaySize.x && height == overlaySize.y)
         return true;
@@ -66,46 +68,42 @@ bool NeuralNetVision::allocBuffers(int width, int height, uint32_t flags)
     return true;
 }
 
-NeuralNetVision::NeuralNetVision(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger)
+NeuralNetSegmentationPipeline::NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger) : ProcessPipeline()
 {
     this->input = input;
     this->net = net;
     this->ocgrid = ocgrid;
     this->procHandler = procHandler;
     this->logger = logger;
-    loop_run = true;
 
     SetVisualizationFlags("overlay|mask");
     this->ignoreClass = "void";
     this->filterMode = segNet::FilterModeFromStr("linear");
 }
 
-NeuralNetVision *NeuralNetVision::SetVisualizationFlags(uint32_t flags)
+NeuralNetSegmentationPipeline *NeuralNetSegmentationPipeline::SetVisualizationFlags(uint32_t flags)
 {
     visualizationFlags = flags;
     logger->info("set visualization flags to value %d", flags);
     return this;
 }
-NeuralNetVision *NeuralNetVision::SetVisualizationFlags(string flags)
+
+NeuralNetSegmentationPipeline *NeuralNetSegmentationPipeline::SetVisualizationFlags(string flags)
 {
     visualizationFlags = segNet::VisualizationFlagsFromStr(flags.c_str());
     logger->info("set visualization flags from %s (value %d)", flags.c_str(), visualizationFlags);
     return this;
 }
 
-void NeuralNetVision::Terminate()
-{
-    logger->info("process termination requested");
-    loop_run = false;
-}
-
-SourceImageFormat *NeuralNetVision::captureNextFrame()
+SourceImageFormat *NeuralNetSegmentationPipeline::captureNextFrame()
 {
     SourceImageFormat *frame = (SourceImageFormat *)input->Capture(10000);
     if (frame == NULL)
     {
-        if (!input->IsStreaming())
-            loop_run = false;
+        if (!input->IsStreaming()) {
+            terminate();
+            return nullptr;
+        }
 
         procHandler->FrameSkipCaptureError();
         logger->error("frame skipped by capture error");
@@ -115,22 +113,12 @@ SourceImageFormat *NeuralNetVision::captureNextFrame()
     return frame;
 }
 
-bool NeuralNetVision::allocateCudaBuffers()
+void NeuralNetSegmentationPipeline::transmitOriginal(SourceImageFormat *frame)
 {
-    if (!allocBuffers(input->GetWidth(), input->GetHeight(), visualizationFlags))
-    {
-        procHandler->FrameSkipMemoryFault();
-        logger->error("frame skipped by memory fauld");
-        return false;
-    }
-
-    logger->info("buffers allocated - processing for width x height: %d x %d",
-                 input->GetWidth(), input->GetHeight());
-
-    return true;
+    procHandler->FrameCaptured(frame, input->GetWidth(), input->GetHeight());
 }
 
-bool NeuralNetVision::processSegmentation(SourceImageFormat *frame)
+bool NeuralNetSegmentationPipeline::processSegmentation(SourceImageFormat *frame)
 {
     if (!net->Process(frame, input->GetWidth(), input->GetHeight(), ignoreClass.c_str()))
     {
@@ -170,23 +158,18 @@ bool NeuralNetVision::processSegmentation(SourceImageFormat *frame)
     return true;
 }
 
-void NeuralNetVision::loop()
+void NeuralNetSegmentationPipeline::process(SourceImageFormat *frame)
 {
-    SourceImageFormat *frame = captureNextFrame();
-    if (frame == NULL)
-        return;
-
-    logger->info("frame captured");
-    procHandler->FrameCaptured(frame, input->GetWidth(), input->GetHeight());
-
     if (!processSegmentation(frame))
         return;
 
     logger->info("frame processed");
+
     procHandler->FrameSegmentationSuccess(imgOverlay, input->GetWidth(), input->GetHeight());
 
     char *occupancyGrid = ocgrid->ComputeOcuppancyGrid(imgMask, ocgrid->GetWidth(), ocgrid->GetHeight());
-    for (int i = 0; i < ocgrid->GetWidth() * ocgrid->GetHeight(); i++) {
+    for (int i = 0; i < ocgrid->GetWidth() * ocgrid->GetHeight(); i++)
+    {
         imgOG[i] = make_uchar3(occupancyGrid[i], 0, 0);
     }
     logger->info("OG computed");
@@ -194,13 +177,22 @@ void NeuralNetVision::loop()
     procHandler->FrameProcessResult(imgOG, ocgrid->GetWidth(), ocgrid->GetHeight());
 }
 
-void NeuralNetVision::LoopUntilSignaled()
+bool NeuralNetSegmentationPipeline::initialize()
 {
-    if (!allocateCudaBuffers())
-        return;
-
-    while (loop_run)
+    if (!allocBuffers(input->GetWidth(), input->GetHeight(), visualizationFlags))
     {
-        loop();
+        procHandler->FrameSkipMemoryFault();
+        logger->error("frame skipped by memory fauld");
+        return false;
     }
+
+    logger->info("buffers allocated - processing for width x height: %d x %d",
+                 input->GetWidth(), input->GetHeight());
+
+    return true;
+}
+
+void NeuralNetSegmentationPipeline::onTerminate()
+{
+    logger->info("process termination requested");
 }

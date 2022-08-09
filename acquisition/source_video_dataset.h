@@ -8,6 +8,7 @@
 #include <jetson-utils/gstCamera.h>
 #include <sstream>
 #include "source_camera.h"
+#include "../utils/file_utils.h"
 
 class SourceVideoDatasetImpl : public SourceCamera
 {
@@ -16,6 +17,10 @@ private:
 
     void buildInput(std::string path, uint32_t width, uint32_t height)
     {
+        if (!FileUtils::fileExists(path)) {
+            LogError("unable to find %s\n", path.c_str());
+            exit(1);
+        }
         videoOptions options;
         options.ioType = videoOptions::INPUT;
         options.zeroCopy = true;

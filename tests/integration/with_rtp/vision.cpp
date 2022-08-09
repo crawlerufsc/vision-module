@@ -19,12 +19,15 @@
 #include <jetson-utils/cudaMappedMemory.h>
 #include <jetson-inference/segNet.h>
 
-#include "model/vision_formats.h"
-#include "acquisition/source_camera_gst.h"
-#include "occupancy_grid/occupancy_grid.h"
-#include "control/process_handler.h"
-#include "log/logger.h"
-#include "segmentation/neuralnet_segmentation_pipeline.h"
+#include "../../../model/vision_formats.h"
+#include "../../../acquisition/source_image_dataset.h"
+#include "../../../acquisition/source_video_dataset.h"
+#include "../../../acquisition/source_camera_device.h"
+#include "../../../occupancy_grid/occupancy_grid.h"
+#include "../../../control/process_handler.h"
+#include "../../../control/process_pipeline.h"
+#include "../../../log/logger.h"
+#include "../../../segmentation/neuralnet_segmentation_pipeline.h"
 
 using namespace std;
 using namespace cv;
@@ -54,10 +57,18 @@ void sig_handler(int val)
 
 int main(int argc, char **argv)
 {
-    SourceCamera *camera = SourceCameraUSBImpl::begin()
-                               ->device("/dev/video1")
+    std::string basePath = "../../imgs";
+
+    SourceCamera *camera = SourceCameraDeviceImpl::begin()
+                               ->device(argv[1])
                                ->withSize(640, 480)
+                               ->setFps(15.0)
+                               ->setBitrate(4000000)
+                               ->codec(videoOptions::CODEC_VP8)
                                ->build();
+
+    if (camera == nullptr || !camera->IsStreaming())
+        return 1;
 
     OccupancyGrid *computeOG = NewOccupancyGridImplInstance();
 
@@ -67,13 +78,14 @@ int main(int argc, char **argv)
                                  "net/hrnet_w18.onnx",
                                  "net/classes.txt",
                                  "net/colors.txt",
-                                 "data",
-                                 "score_fr_21_classes",
+                                 "input.1",
+                                 "3545",                                
                                  10,
                                  precisionType::TYPE_FP16,
                                  deviceType::DEVICE_GPU,
-                                 true);
+                                 false);
 
+    //segNet *net = nullptr;
     visionProc = new NeuralNetSegmentationPipeline(camera, net, computeOG, procHandler, logger);
 
     if (signal(SIGINT, sig_handler) == SIG_ERR)

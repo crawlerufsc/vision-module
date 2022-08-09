@@ -3,15 +3,16 @@
 
 #include <jetson-utils/cudaMappedMemory.h>
 
-
 class ProcHandlerImpl : public ProcHandler
 {
+    Logger *logger;
     StreamServer *originalFrameStreamServer;
     StreamServer *segmentedFrameStreamServer;
     StreamServer *occupancyGridStreamServer;
 
-public:
-    ProcHandlerImpl(Logger *logger) {
+private:
+    void buildStreamServers()
+    {
         originalFrameStreamServer = new StreamServer("OriginalFrame", 20000, logger);
         segmentedFrameStreamServer = new StreamServer("SegmentedFrame", 20001, logger);
         occupancyGridStreamServer = new StreamServer("OGStreamServer", 20002, logger);
@@ -19,14 +20,26 @@ public:
         segmentedFrameStreamServer->Start();
         occupancyGridStreamServer->Start();
     }
-
-    ~ProcHandlerImpl() {
+    void destroyStreamServers()
+    {
         originalFrameStreamServer->Stop();
         segmentedFrameStreamServer->Stop();
         occupancyGridStreamServer->Stop();
         delete originalFrameStreamServer;
         delete segmentedFrameStreamServer;
         delete occupancyGridStreamServer;
+    }
+
+public:
+    ProcHandlerImpl(Logger *logger)
+    {
+        this->logger = logger;
+        buildStreamServers();
+    }
+
+    ~ProcHandlerImpl()
+    {
+        destroyStreamServers();
     }
 
     void FrameSkipCaptureError() override
@@ -56,8 +69,6 @@ public:
     {
         segmentedFrameStreamServer->NewFrame(result_value, width, height);
     }
-
-    
 };
 
 ProcHandler *NewProcHandlerImplInstance(Logger *logger) { return new ProcHandlerImpl(logger); }

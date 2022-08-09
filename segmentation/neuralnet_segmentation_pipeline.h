@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <thread>
+#include <mutex>
 
 #include <jetson-utils/videoSource.h>
 #include <jetson-utils/videoOutput.h>
@@ -19,9 +21,9 @@
 #include "../occupancy_grid/occupancy_grid.h"
 #include "../control/process_handler.h"
 #include "../log/logger.h"
-#include "../segmentation/neuralnet_segmentation.h"
+#include "../control/process_pipeline.h"
 
-class NeuralNetVision
+class NeuralNetSegmentationPipeline : public ProcessPipeline
 {
 private:
     SourceCamera *input;
@@ -29,12 +31,12 @@ private:
     OccupancyGrid *ocgrid;
     ProcHandler *procHandler;
     Logger *logger;
-    bool loop_run;
+
     SourceImageFormat *imgMask = NULL;      // color of each segmentation class
     SourceImageFormat *imgOverlay = NULL;   // input + alpha-blended mask
     SourceImageFormat *imgComposite = NULL; // overlay with mask next to it
     SourceImageFormat *imgOutput = NULL;    // reference to one of the above three
-    SourceImageFormat *imgOG = NULL; // overlay with mask next to it
+    SourceImageFormat *imgOG = NULL;        // overlay with mask next to it
     uint32_t visualizationFlags;
 
     int2 maskSize;
@@ -45,19 +47,20 @@ private:
     std::string ignoreClass;
     segNet::FilterMode filterMode;
 
+    bool processSegmentation(SourceImageFormat *frame);
+
 protected:
     bool allocBuffers(int width, int height, uint32_t flags);
-    bool allocateCudaBuffers();
-    SourceImageFormat *captureNextFrame();
-    bool processSegmentation(SourceImageFormat *frame);
-    void loop();
+    bool initialize() override;
+    SourceImageFormat *captureNextFrame() override;
+    void transmitOriginal(SourceImageFormat *) override;
+    void process(SourceImageFormat *);
+    void onTerminate() override;    
 
 public:
-    NeuralNetVision(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger);
-    NeuralNetVision* SetVisualizationFlags(uint32_t flags);
-    NeuralNetVision* SetVisualizationFlags(string flags);
-    void Terminate();
-    void LoopUntilSignaled();
+    NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger);
+    NeuralNetSegmentationPipeline *SetVisualizationFlags(uint32_t flags);
+    NeuralNetSegmentationPipeline *SetVisualizationFlags(string flags);
 };
 
 #endif

@@ -99,22 +99,7 @@ public:
             printf("failed to load image '%s'\n", filename.c_str());
             return 0;
         }
-        // cv::Mat img = cv::imread(filename, cv::COLOR_BGR2RGB);
-
-        // if (img.empty()) return nullptr;
-
-        // cudaMemcpy2D((void*)cudaBuffer, sizeof(SourceImageFormat)*width, (void*)img.data, img.step,
-        //       sizeof(SourceImageFormat)*width, height, cudaMemcpyHostToDevice);
-
-        // std::ifstream file(filename, std::ifstream::binary);
-        // file.seekg(0, file.end);
-        // size_t length = static_cast<size_t>(file.tellg());
-        // file.seekg(0, file.beg);
-
-        // char *buffer = new char[img.];
-        //  file.read(buffer, length);
-        //  file.close();
-
+ 
         this->repeat_for_pos++;
 
         if (this->repeat_for_pos >= this->repeat_for) {
