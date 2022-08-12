@@ -2,7 +2,7 @@
 UFSC driveless car project repository <br/>
 
 ## Occupancy Grid Testing <br/>
-This test case runs an image input/ image output test for the occupancy grid compute function.<br/>
+This test case runs with an image as input and an image as output test for the occupancy grid compute function.<br/>
 The aim here is to debug it isolated from the rest of the vision module<br/>
 <br/>
 To compile it, just run<br/>
@@ -23,4 +23,6 @@ If your PC is not setup for OpenCV2, cmake and g++, please use our develop conta
 5. Reopen the  driveless-dev-cuda folder using visual studio code and chose the option Reopen in container. <br/>
 6. Use Open folder to locate the code you wish to work with <br/>
 7. That's it, you're working with Vscode inside a container fully ready to run C/C++ code for this project. <br/>
-
+<br/>
+Now you can compile it with<br/>
+\$ make<br/>
