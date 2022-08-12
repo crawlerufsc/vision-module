@@ -30,18 +30,19 @@ SET(TARGET_H
     ../../../acquisition/source_camera.h
     ../../../acquisition/source_image_dataset.h
     ../../../acquisition/source_camera_gst.h
-    ../../../acquisition/source_camera_device.h
     ../../../control/process_handler.h
     ../../../control/process_pipeline.h
     ../../../log/logger.h
     ../../../segmentation/neuralnet_segmentation_pipeline.h
     ../../../communication/stream_server.h
+    ../../../utils/image_utils.h
 )
 
 
 cuda_add_executable(
     vision-tst
     vision.cpp 
+    ../../../occupancy_grid/occupancy_grid_impl.cpp 
     ../../../control/process_handler_impl.cpp 
     ../../../log/logger_debug_stdout.cpp 
     ../../../segmentation/neuralnet_segmentation_pipeline.cpp
@@ -49,4 +50,4 @@ cuda_add_executable(
 )
 
 # link my-recognition to jetson-inference library
-target_link_libraries(vision-tst jetson-inference ${OpenCV_LIBS})
+target_link_libraries(vision-tst jetson-inference ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT})

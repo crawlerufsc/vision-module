@@ -1,72 +1,6 @@
 #include "neuralnet_segmentation_pipeline.h"
 #include "../control/process_handler.h"
-
-bool NeuralNetSegmentationPipeline::allocBuffers(int width, int height, uint32_t flags)
-{
-    printf("trying to allocate %ux%u buffers\n", width, height);
-    // check if the buffers were already allocated for this size
-    if (imgOverlay != NULL && width == overlaySize.x && height == overlaySize.y)
-        return true;
-
-    // free previous buffers if they exit
-    CUDA_FREE_HOST(imgMask);
-    CUDA_FREE_HOST(imgOverlay);
-    CUDA_FREE_HOST(imgComposite);
-
-    // allocate overlay image
-    overlaySize = make_int2(width, height);
-
-    if (flags & segNet::VISUALIZE_OVERLAY)
-    {
-        if (!cudaAllocMapped(&imgOverlay, overlaySize))
-        {
-            LogError("segnet:  failed to allocate CUDA memory for overlay image (%ux%u)\n", width, height);
-            return false;
-        }
-
-        imgOutput = imgOverlay;
-        outputSize = overlaySize;
-    }
-
-    // allocate mask image (half the size, unless it's the only output)
-    if (flags & segNet::VISUALIZE_MASK)
-    {
-        maskSize = (flags & segNet::VISUALIZE_OVERLAY) ? make_int2(width / 2, height / 2) : overlaySize;
-
-        if (!cudaAllocMapped(&imgMask, maskSize))
-        {
-            LogError("segnet:  failed to allocate CUDA memory for mask image\n");
-            return false;
-        }
-
-        imgOutput = imgMask;
-        outputSize = maskSize;
-    }
-
-    // allocate composite image if both overlay and mask are used
-    if ((flags & segNet::VISUALIZE_OVERLAY) && (flags & segNet::VISUALIZE_MASK))
-    {
-        compositeSize = make_int2(overlaySize.x + maskSize.x, overlaySize.y);
-
-        if (!cudaAllocMapped(&imgComposite, compositeSize))
-        {
-            LogError("segnet:  failed to allocate CUDA memory for composite image\n");
-            return false;
-        }
-
-        imgOutput = imgComposite;
-        outputSize = compositeSize;
-    }
-
-    auto ogSize = make_int2(ocgrid->GetWidth(), ocgrid->GetHeight());
-    if (!cudaAllocMapped(&imgOG, ogSize))
-    {
-        LogError("segnet:  failed to allocate CUDA memory for OG output\n");
-        return false;
-    }
-
-    return true;
-}
+#include "../utils/cuda_utils.h"
 
 NeuralNetSegmentationPipeline::NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger) : ProcessPipeline()
 {
@@ -76,23 +10,8 @@ NeuralNetSegmentationPipeline::NeuralNetSegmentationPipeline(SourceCamera *input
     this->procHandler = procHandler;
     this->logger = logger;
 
-    SetVisualizationFlags("overlay|mask");
     this->ignoreClass = "void";
     this->filterMode = segNet::FilterModeFromStr("linear");
-}
-
-NeuralNetSegmentationPipeline *NeuralNetSegmentationPipeline::SetVisualizationFlags(uint32_t flags)
-{
-    visualizationFlags = flags;
-    logger->info("set visualization flags to value %d", flags);
-    return this;
-}
-
-NeuralNetSegmentationPipeline *NeuralNetSegmentationPipeline::SetVisualizationFlags(string flags)
-{
-    visualizationFlags = segNet::VisualizationFlagsFromStr(flags.c_str());
-    logger->info("set visualization flags from %s (value %d)", flags.c_str(), visualizationFlags);
-    return this;
 }
 
 SourceImageFormat *NeuralNetSegmentationPipeline::captureNextFrame()
@@ -100,7 +19,8 @@ SourceImageFormat *NeuralNetSegmentationPipeline::captureNextFrame()
     SourceImageFormat *frame = (SourceImageFormat *)input->Capture(10000);
     if (frame == NULL)
     {
-        if (!input->IsStreaming()) {
+        if (!input->IsStreaming())
+        {
             terminate();
             return nullptr;
         }
@@ -130,27 +50,21 @@ bool NeuralNetSegmentationPipeline::processSegmentation(SourceImageFormat *frame
     logger->info("neuralnet: frame processed");
 
     // generate overlay
-    if (visualizationFlags & segNet::VISUALIZE_OVERLAY)
+    if (!net->Overlay(imgOverlay, overlaySize.x, overlaySize.y, filterMode))
     {
-        if (!net->Overlay(imgOverlay, overlaySize.x, overlaySize.y, filterMode))
-        {
-            procHandler->FrameSkipSegmentationOverlayError();
-            logger->error("the neuralnet failed to process segmentation overlay");
-            return false;
-        }
+        procHandler->FrameSkipSegmentationOverlayError();
+        logger->error("the neuralnet failed to process segmentation overlay");
+        return false;
     }
 
     logger->info("neuralnet: overlay");
 
     // generate mask
-    if (visualizationFlags & segNet::VISUALIZE_MASK)
+    if (!net->Mask(imgMask, maskSize.x, maskSize.y, filterMode))
     {
-        if (!net->Mask(imgMask, maskSize.x, maskSize.y, filterMode))
-        {
-            procHandler->FrameSkipSegmentationMaskError();
-            logger->error("the neuralnet failed to process segmentation mask");
-            return false;
-        }
+        procHandler->FrameSkipSegmentationMaskError();
+        logger->error("the neuralnet failed to process segmentation mask");
+        return false;
     }
     logger->info("neuralnet: mask");
 
@@ -164,30 +78,54 @@ void NeuralNetSegmentationPipeline::process(SourceImageFormat *frame)
         return;
 
     logger->info("frame processed");
-
-    procHandler->FrameSegmentationSuccess(imgOverlay, input->GetWidth(), input->GetHeight());
+    procHandler->FrameSegmentation(imgOverlay, overlaySize.x, overlaySize.y);
+    procHandler->FrameMask(imgMask, maskSize.x, maskSize.y);
 
     char *occupancyGrid = ocgrid->ComputeOcuppancyGrid(imgMask, ocgrid->GetWidth(), ocgrid->GetHeight());
+    
     for (int i = 0; i < ocgrid->GetWidth() * ocgrid->GetHeight(); i++)
     {
         imgOG[i] = make_uchar3(occupancyGrid[i], 0, 0);
     }
-    logger->info("OG computed");
 
-    procHandler->FrameProcessResult(imgOG, ocgrid->GetWidth(), ocgrid->GetHeight());
+    logger->info("OG computed");
+    procHandler->FrameOccupancyGrid(imgOG, occupancyGridSize.x, occupancyGridSize.y);
 }
 
 bool NeuralNetSegmentationPipeline::initialize()
 {
-    if (!allocBuffers(input->GetWidth(), input->GetHeight(), visualizationFlags))
+    CUDA_FREE_HOST(imgOverlay);
+    CUDA_FREE_HOST(imgOG);
+
+    int width = input->GetWidth();
+    int height = input->GetHeight();
+
+    inputSize = make_int2(width, height);
+    overlaySize = make_int2(width, height);
+    maskSize = make_int2(width, height);
+    occupancyGridSize = make_int2(ocgrid->GetWidth(), ocgrid->GetHeight());
+
+    imgOverlay = CudaUtils::allocCUDABuffer(overlaySize.x, overlaySize.y);
+    imgOG = CudaUtils::allocCUDABuffer(occupancyGridSize.x, occupancyGridSize.y);
+    imgMask = CudaUtils::allocCUDABuffer(maskSize.x, maskSize.y);
+
+    if (imgOverlay == nullptr)
     {
-        procHandler->FrameSkipMemoryFault();
-        logger->error("frame skipped by memory fauld");
+        LogError("failed to allocate CUDA memory for overlay image (%ux%u)\n", overlaySize.x, overlaySize.y);
         return false;
     }
-
-    logger->info("buffers allocated - processing for width x height: %d x %d",
-                 input->GetWidth(), input->GetHeight());
+    if (imgOG == nullptr)
+    {
+        LogError("failed to allocate CUDA memory for occupancy grid (%ux%u)\n", occupancyGridSize.x, occupancyGridSize.y);
+        return false;
+    }
+    if (imgMask == nullptr)
+    {
+        LogError("failed to allocate CUDA memory for image mask (%ux%u)\n", maskSize.x, maskSize.y);
+        return false;
+    }
+    logger->info("buffers allocated - processing for width x height: %ux%u, occupancy grid %ux%u, mask %ux%u ",
+                 input->GetWidth(), input->GetHeight(), occupancyGridSize.x, occupancyGridSize.y, maskSize.x, maskSize.y);
 
     return true;
 }

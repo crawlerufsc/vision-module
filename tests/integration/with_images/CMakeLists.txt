@@ -41,7 +41,6 @@ SET(TARGET_H
 cuda_add_executable(
     vision-tst
     vision.cpp 
-    ../../../occupancy_grid/occupancy_grid_impl.cpp 
     ../../../control/process_handler_impl.cpp 
     ../../../log/logger_debug_stdout.cpp 
     ../../../segmentation/neuralnet_segmentation_pipeline.cpp

@@ -20,8 +20,8 @@
 #include <jetson-inference/segNet.h>
 
 #include <../../acquisition/source_camera_gst.h>
+#include <../../utils/image_utils.h>
 
-// https://gist.github.com/jungle-cat
 // v4l2-ctl --list-formats-ext -d /dev/video1
 
 using namespace std;
@@ -54,12 +54,15 @@ int main(int argc, char **argv)
 
     cout << "camera width = " << camera->GetWidth() << ", height = " << camera->GetHeight() << endl;
 
+    /*
     cv::Mat mask_image_bgr, mask_image_rgb, original_image_bgr, original_image_rgb;
     original_image_rgb = cv::Mat(camera->GetHeight(), camera->GetWidth(), CV_8UC3, imgInput);
     original_image_bgr = cv::Mat(camera->GetHeight(), camera->GetWidth(), CV_8UC3);
     cv::cvtColor(original_image_rgb, original_image_bgr, cv::COLOR_RGB2BGR);
     std::string img_name = std::string("frame.png");
-    cv::imwrite(img_name, original_image_bgr);
+    cv::imwrite(img_name, original_image_bgr);*/
+
+    ImageUtils::writeFrameToPng(imgInput, camera->GetWidth(), camera->GetHeight(), "frame.png");
 
     return 0;
 }

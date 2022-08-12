@@ -33,6 +33,7 @@ SET(TARGET_H
     ../../acquisition/source_camera_gst.h
     ../../acquisition/source_image_dataset.h
     ../../acquisition/source_video_dataset.h
+    ../../utils/image_utils.h
 )
     
 
@@ -53,12 +54,16 @@ cuda_add_executable(stream_video
     ../../log/logger_debug_stdout.cpp
     ../../communication/stream_server.cpp
 )
-
+cuda_add_executable(segvideo2img
+    test_video2dataset_segmentation.cpp
+    ../../log/logger_debug_stdout.cpp
+)
 # link my-recognition to jetson-inference library
 target_link_libraries(usb2file jetson-inference ${OpenCV_LIBS})
 target_link_libraries(usbview jetson-inference ${OpenCV_LIBS})
 target_link_libraries(aqtst jetson-inference ${OpenCV_LIBS})
 target_link_libraries(usbremote jetson-inference ${OpenCV_LIBS})
 target_link_libraries(stream_video jetson-inference ${OpenCV_LIBS})
+target_link_libraries(segvideo2img jetson-inference ${OpenCV_LIBS})
 
 

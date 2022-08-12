@@ -32,17 +32,14 @@ private:
     ProcHandler *procHandler;
     Logger *logger;
 
-    SourceImageFormat *imgMask = NULL;      // color of each segmentation class
-    SourceImageFormat *imgOverlay = NULL;   // input + alpha-blended mask
-    SourceImageFormat *imgComposite = NULL; // overlay with mask next to it
-    SourceImageFormat *imgOutput = NULL;    // reference to one of the above three
-    SourceImageFormat *imgOG = NULL;        // overlay with mask next to it
-    uint32_t visualizationFlags;
+    SourceImageFormat *imgOverlay = NULL;
+    SourceImageFormat *imgMask = NULL;
+    SourceImageFormat *imgOG = NULL;
 
-    int2 maskSize;
+    int2 inputSize;
     int2 overlaySize;
-    int2 compositeSize;
-    int2 outputSize;
+    int2 maskSize;
+    int2 occupancyGridSize;
 
     std::string ignoreClass;
     segNet::FilterMode filterMode;
@@ -59,8 +56,6 @@ protected:
 
 public:
     NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger);
-    NeuralNetSegmentationPipeline *SetVisualizationFlags(uint32_t flags);
-    NeuralNetSegmentationPipeline *SetVisualizationFlags(string flags);
 };
 
 #endif

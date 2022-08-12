@@ -22,6 +22,7 @@
 #include "model/vision_formats.h"
 #include "acquisition/source_camera_gst.h"
 #include "occupancy_grid/occupancy_grid.h"
+#include "occupancy_grid/occupancy_grid_impl.h"
 #include "control/process_handler.h"
 #include "log/logger.h"
 #include "segmentation/neuralnet_segmentation_pipeline.h"
@@ -32,7 +33,6 @@ using namespace chrono;
 
 #define DEBUG 1
 
-extern OccupancyGrid *NewOccupancyGridImplInstance();
 extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
 ProcessPipeline *visionProc;
 
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
                                ->withSize(640, 480)
                                ->build();
 
-    OccupancyGrid *computeOG = NewOccupancyGridImplInstance();
+    OccupancyGrid *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
 

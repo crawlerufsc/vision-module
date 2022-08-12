@@ -23,7 +23,7 @@
 #include "../../../acquisition/source_image_dataset.h"
 #include "../../../acquisition/source_video_dataset.h"
 #include "../../../acquisition/source_camera_device.h"
-#include "../../../occupancy_grid/occupancy_grid.h"
+#include "../../../occupancy_grid/occupancy_grid_impl.h"
 #include "../../../control/process_handler.h"
 #include "../../../control/process_pipeline.h"
 #include "../../../log/logger.h"
@@ -35,7 +35,6 @@ using namespace chrono;
 
 #define DEBUG 1
 
-extern OccupancyGrid *NewOccupancyGridImplInstance();
 extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
 ProcessPipeline *visionProc;
 
@@ -70,7 +69,7 @@ int main(int argc, char **argv)
     if (camera == nullptr || !camera->IsStreaming())
         return 1;
 
-    OccupancyGrid *computeOG = NewOccupancyGridImplInstance();
+    OccupancyGrid *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
 
