@@ -3,20 +3,20 @@
 
 #include <queue>
 #include <mutex>
-#include "../model/vision_formats.h"
 
+template <typename T>
 class ProcessPipeline
 {
 private:
     std::mutex *mtx;
     bool loop_run;
-    SourceImageFormat *frame;
+    T *frame;
 
     void captureThr()
     {
         while (this->loop_run)
         {
-            SourceImageFormat *f = this->captureNextFrame();
+            T *f = this->captureNextFrame();
             if (f != NULL)
             {
                 if (this->mtx->try_lock())
@@ -48,9 +48,9 @@ private:
 
 protected:
     virtual bool initialize() = 0;
-    virtual SourceImageFormat *captureNextFrame() = 0;
-    virtual void transmitOriginal(SourceImageFormat *) = 0;
-    virtual void process(SourceImageFormat *) = 0;
+    virtual T *captureNextFrame() = 0;
+    virtual void transmitOriginal(T *) = 0;
+    virtual void process(T *) = 0;
     virtual void onTerminate() = 0;
 
 public:

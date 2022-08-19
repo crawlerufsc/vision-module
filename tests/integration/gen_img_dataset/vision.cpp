@@ -40,7 +40,7 @@ using namespace chrono;
 
 
 extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
-ProcessPipeline *visionProc;
+ProcessPipeline<SourceImageFormat> *visionProc;
 
 #ifdef DEBUG
 extern Logger *NewDebugLoggerInstance();
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 
     SourceCamera *camera = new SourceVideoDatasetImpl(argv[1], 800, 600);
 
-    OccupancyGrid *computeOG = new OccupancyGridImpl<SourceImageFormat>();
+    OccupancyGrid<SourceImageFormat> *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 
     ProcHandler *procHandler = new ImageDatasetGeneration(num_frame_skip, num_images);
 
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
                                  deviceType::DEVICE_GPU,
                                  false);
 
-    visionProc = new NeuralNetSegmentationPipeline(camera, net, computeOG, procHandler, logger);
+    visionProc = new NeuralNetSegmentationPipeline<SourceImageFormat>(camera, net, computeOG, procHandler, logger);
 
     if (signal(SIGINT, sig_handler) == SIG_ERR)
         LogError("can't catch SIGINT\n");

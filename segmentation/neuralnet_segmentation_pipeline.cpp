@@ -2,7 +2,10 @@
 #include "../control/process_handler.h"
 #include "../utils/cuda_utils.h"
 
-NeuralNetSegmentationPipeline::NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger) : ProcessPipeline()
+template class NeuralNetSegmentationPipeline<SourceImageFormat>;
+
+template <typename T>
+NeuralNetSegmentationPipeline<T>::NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid<T> *ocgrid, ProcHandler *procHandler, Logger *logger) : ProcessPipeline<T>()
 {
     this->input = input;
     this->net = net;
@@ -14,9 +17,10 @@ NeuralNetSegmentationPipeline::NeuralNetSegmentationPipeline(SourceCamera *input
     this->filterMode = segNet::FilterModeFromStr("linear");
 }
 
-SourceImageFormat *NeuralNetSegmentationPipeline::captureNextFrame()
+template <typename T>
+T *NeuralNetSegmentationPipeline<T>::captureNextFrame()
 {
-    SourceImageFormat *frame = (SourceImageFormat *)input->Capture(10000);
+    T *frame = (T *)input->Capture(10000);
     if (frame == NULL)
     {
         if (!input->IsStreaming())
@@ -33,12 +37,14 @@ SourceImageFormat *NeuralNetSegmentationPipeline::captureNextFrame()
     return frame;
 }
 
-void NeuralNetSegmentationPipeline::transmitOriginal(SourceImageFormat *frame)
+template <typename T>
+void NeuralNetSegmentationPipeline<T>::transmitOriginal(T *frame)
 {
     procHandler->FrameCaptured(frame, input->GetWidth(), input->GetHeight());
 }
 
-bool NeuralNetSegmentationPipeline::processSegmentation(SourceImageFormat *frame)
+template <typename T>
+bool NeuralNetSegmentationPipeline<T>::processSegmentation(T *frame)
 {
     if (!net->Process(frame, input->GetWidth(), input->GetHeight(), ignoreClass.c_str()))
     {
@@ -72,7 +78,8 @@ bool NeuralNetSegmentationPipeline::processSegmentation(SourceImageFormat *frame
     return true;
 }
 
-void NeuralNetSegmentationPipeline::process(SourceImageFormat *frame)
+template <typename T>
+void NeuralNetSegmentationPipeline<T>::process(T *frame)
 {
     if (!processSegmentation(frame))
         return;
@@ -81,42 +88,32 @@ void NeuralNetSegmentationPipeline::process(SourceImageFormat *frame)
     procHandler->FrameSegmentation(imgOverlay, overlaySize.x, overlaySize.y);
     procHandler->FrameMask(imgMask, maskSize.x, maskSize.y);
 
-    char *occupancyGrid = ocgrid->ComputeOcuppancyGrid(imgMask, ocgrid->GetWidth(), ocgrid->GetHeight());
-    
-    for (int i = 0; i < ocgrid->GetWidth() * ocgrid->GetHeight(); i++)
-    {
-        imgOG[i] = make_uchar3(occupancyGrid[i], 0, 0);
-    }
+    ocgrid->ComputeOcuppancyGrid(imgMask, ocgrid->GetWidth(), ocgrid->GetHeight());
 
     logger->info("OG computed");
-    procHandler->FrameOccupancyGrid(imgOG, occupancyGridSize.x, occupancyGridSize.y);
+    procHandler->FrameOccupancyGrid(ocgrid->GetResult(), ocgrid->GetWidth(), ocgrid->GetHeight());
 }
 
-bool NeuralNetSegmentationPipeline::initialize()
+template <typename T>
+bool NeuralNetSegmentationPipeline<T>::initialize()
 {
     CUDA_FREE_HOST(imgOverlay);
-    CUDA_FREE_HOST(imgOG);
+    CUDA_FREE_HOST(imgMask);
 
     int width = input->GetWidth();
     int height = input->GetHeight();
 
     inputSize = make_int2(width, height);
     overlaySize = make_int2(width, height);
-    maskSize = make_int2(width, height);
-    occupancyGridSize = make_int2(ocgrid->GetWidth(), ocgrid->GetHeight());
+    maskSize = make_int2(width / 2, height / 2);
+   
 
-    imgOverlay = CudaUtils::allocCUDABuffer(overlaySize.x, overlaySize.y);
-    imgOG = CudaUtils::allocCUDABuffer(occupancyGridSize.x, occupancyGridSize.y);
-    imgMask = CudaUtils::allocCUDABuffer(maskSize.x, maskSize.y);
+    imgOverlay = CudaUtils<T>::allocCUDABuffer(overlaySize.x, overlaySize.y);
+    imgMask = CudaUtils<T>::allocCUDABuffer(maskSize.x, maskSize.y);
 
     if (imgOverlay == nullptr)
     {
         LogError("failed to allocate CUDA memory for overlay image (%ux%u)\n", overlaySize.x, overlaySize.y);
-        return false;
-    }
-    if (imgOG == nullptr)
-    {
-        LogError("failed to allocate CUDA memory for occupancy grid (%ux%u)\n", occupancyGridSize.x, occupancyGridSize.y);
         return false;
     }
     if (imgMask == nullptr)
@@ -125,12 +122,13 @@ bool NeuralNetSegmentationPipeline::initialize()
         return false;
     }
     logger->info("buffers allocated - processing for width x height: %ux%u, occupancy grid %ux%u, mask %ux%u ",
-                 input->GetWidth(), input->GetHeight(), occupancyGridSize.x, occupancyGridSize.y, maskSize.x, maskSize.y);
+                 input->GetWidth(), input->GetHeight(), ocgrid->GetWidth(), ocgrid->GetHeight(), maskSize.x, maskSize.y);
 
     return true;
 }
 
-void NeuralNetSegmentationPipeline::onTerminate()
+template <typename T>
+void NeuralNetSegmentationPipeline<T>::onTerminate()
 {
     logger->info("process termination requested");
 }

@@ -1,7 +1,6 @@
 #ifndef _OCCUPANCY_GRID_IMPL_H
 #define _OCCUPANCY_GRID_IMPL_H
 
-
 #include <memory>
 #include <iostream>
 
@@ -10,9 +9,10 @@
 
 #include <opencv2/opencv.hpp>
 #include "occupancy_grid.h"
+#include "../utils/cuda_utils.h"
 
-template <typename SourceImageFormat>
-class OccupancyGridImpl : public OccupancyGrid
+template <typename T>
+class OccupancyGridImpl : public OccupancyGrid<T>
 {
 private:
     const int og_width = 160;
@@ -36,6 +36,8 @@ private:
 
     int grid_dims[2];
     std::vector<cv::Point2d> projectedPoints;
+
+    T *imgBuffer;
 
     cv::Point3d get_pos_grid(int i, int j)
     {
@@ -179,6 +181,15 @@ public:
 
         initializeParams();
         computeGridProjectedPoints();
+
+        CUDA_FREE_HOST(imgBuffer);
+        imgBuffer = CudaUtils<T>::allocCUDABuffer(og_width, og_depth);
+
+        if (imgBuffer == nullptr)
+        {
+            LogError("failed to allocate CUDA memory for occupancy grid (%ux%u)\n", og_width, og_depth);
+            return;
+        }
     }
 
     int GetWidth() override
@@ -190,13 +201,14 @@ public:
         return og_depth;
     }
 
-    char *ComputeOcuppancyGrid(void *frame_input, int width, int height) override
+    SourceImageFormat* GetResult() override {
+        return imgBuffer;
+    }
+
+    void ComputeOcuppancyGrid(void *frame_input, int width, int height) override
     {
-        SourceImageFormat *frame = (SourceImageFormat *)frame_input;
-
-        char *grid = (char *)malloc(sizeof(char) * og_depth * og_width);
-        memset(grid, 0, og_width);
-
+        T *frame = (T *)frame_input;
+        memset(imgBuffer, 0, 3 * og_width * og_depth);
 
         for (int i = 0; i < grid_dims[0]; i++)
         {
@@ -209,7 +221,7 @@ public:
                     continue;
                 else
                 {
-                    char *uc = reinterpret_cast<char *>(&frame[width * pixel_h + pixel_w]);
+                    char *uc = reinterpret_cast<char *>(&frame[3 * width * pixel_h + 3 * pixel_w]);
                     uint r, g, b;
                     r = *uc;
                     g = *(++uc);
@@ -219,18 +231,21 @@ public:
 
                     if (r == 0 && g == 0 && b == 0)
                     {
-                        grid[mem_pos] = 0;
+                        imgBuffer[mem_pos].x = 0;
+                        imgBuffer[mem_pos].y = 0;
+                        imgBuffer[mem_pos].z = 0;
                     }
                     else
                     {
-                        grid[mem_pos] = 1;
+                        imgBuffer[mem_pos].x = 255;
+                        imgBuffer[mem_pos].y = 255;
+                        imgBuffer[mem_pos].z = 255;
                     }
                 }
             }
         }
-        return grid;
+        
     }
 };
-
 
 #endif

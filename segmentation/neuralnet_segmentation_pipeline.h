@@ -22,40 +22,40 @@
 #include "../control/process_handler.h"
 #include "../log/logger.h"
 #include "../control/process_pipeline.h"
+#include "../model/vision_formats.h"
 
-class NeuralNetSegmentationPipeline : public ProcessPipeline
+template <typename T>
+class NeuralNetSegmentationPipeline : public ProcessPipeline<T>
 {
 private:
     SourceCamera *input;
     segNet *net;
-    OccupancyGrid *ocgrid;
+    OccupancyGrid<T> *ocgrid;
     ProcHandler *procHandler;
     Logger *logger;
 
-    SourceImageFormat *imgOverlay = NULL;
-    SourceImageFormat *imgMask = NULL;
-    SourceImageFormat *imgOG = NULL;
+    T *imgOverlay = NULL;
+    T *imgMask = NULL;
 
     int2 inputSize;
     int2 overlaySize;
     int2 maskSize;
-    int2 occupancyGridSize;
 
     std::string ignoreClass;
     segNet::FilterMode filterMode;
 
-    bool processSegmentation(SourceImageFormat *frame);
+    bool processSegmentation(T *frame);
 
 protected:
     bool allocBuffers(int width, int height, uint32_t flags);
     bool initialize() override;
-    SourceImageFormat *captureNextFrame() override;
-    void transmitOriginal(SourceImageFormat *) override;
-    void process(SourceImageFormat *);
+    T *captureNextFrame() override;
+    void transmitOriginal(T *) override;
+    void process(T *);
     void onTerminate() override;    
 
 public:
-    NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger);
+    NeuralNetSegmentationPipeline(SourceCamera *input, segNet *net, OccupancyGrid<T> *ocgrid, ProcHandler *procHandler, Logger *logger);
 };
 
 #endif
