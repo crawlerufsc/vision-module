@@ -1,8 +1,8 @@
 # Integration Testing
 
-## With RTP 
+## With Images 
 
-A test that runs the vision module connected with a RTP source camera. Can be used to receive image from simulators. Outputs the same way a normal vision module would, using the stream servers provided by the communication submodule.
+A test that runs the vision module connected with a set of images as the source camera. Outputs the same way a normal vision module would, using the stream servers provided by the communication submodule.
 
 ## How to test it:
 
