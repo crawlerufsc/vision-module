@@ -1,110 +1,69 @@
-
 #include "stream_server.h"
+
+#include <nlohmann/json.hpp>
 #include <jetson-utils/cudaMappedMemory.h>
 #include <opencv2/core/cuda/vec_traits.hpp>
+#include <sstream>
 
+using nlohmann::json;
 
-static void listener(StreamServer *streamServer);
-
-StreamServer::StreamServer(std::string serviceName, int listenPort, Logger *logger)
+StreamServer::StreamServer(string serviceName, const char *topic, Logger *logger, const char *mqttHost, const int mqttPort) : PubSubClient(mqttHost, mqttPort, topic)
 {
-    if (listenPort <= 0)
-    {
-        throw invalid_argument("listenPort must be a positive value");
-    }
-    if (logger == nullptr)
-    {
-        throw invalid_argument("please provide a valid non null logger");
-    }
-    this->listenPort = listenPort;
-
-    this->clients = new vector<ClientConnection *>();
-    this->main = nullptr;
     this->serviceName = serviceName;
-    this->active = false;
     this->logger = logger;
+    this->clients = new vector<ClientConnection *>();
 }
-void StreamServer::Start()
-{
-    listenerFd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serverAddr;
 
-    if (listenerFd < 0)
-    {
-        logger->error("Unable to open socket for service %s", serviceName.c_str());
+StreamServer::~StreamServer()
+{
+    if (isConnected())
+        Stop();
+
+    delete clients;
+}
+
+// char *StreamServer::buildDefaultTopic(std::string serviceName)
+// {
+//     int p = strlen(VISION_CMD_TOPIC);
+//     int size = sizeof(char) * (p   + serviceName.size() + 2);
+//     char *topic = new char(size);
+//     memcpy(topic, VISION_CMD_TOPIC, sizeof(char) * p );
+//     topic[p + 1] = '/';
+
+//     for (int i = 0; i < this->serviceName.size(); i++)
+//         topic[p  + i] = this->serviceName[i];
+
+//     topic[size] = 0;
+
+//     return topic;
+// }
+
+// void StreamServer::Start(int timeout_ms)
+// {
+//     while (!isConnected() || timeout_ms <= 0) {
+//         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//         timeout_ms -= 10;
+//     }
+//     subscribeTo(buildDefaultTopic(serviceName));
+// }
+
+void StreamServer::onStop()
+{
+    if (this->clients->size() == 0)
         return;
+
+    for (ClientConnection *sc : *this->clients)
+    {
+        sc->stream->Close();
+        delete sc;
     }
 
-    bzero((char *)&serverAddr, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(listenPort);
-
-    if (bind(listenerFd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
-    {
-        logger->error("Unable to bind to port %d for service %s", listenPort, serviceName.c_str());
-        return;
-    }
-
-    if (listen(listenerFd, 5) < 0)
-    {
-        logger->error("Unable to listen to port %d for service %s", listenPort, serviceName.c_str());
-        return;
-    }
-
-    this->active = true;
-    main = new thread(listener, this);
-}
-
-bool StreamServer::IsActive()
-{
-    return this->active;
-}
-int StreamServer::GetListenerDescriptor()
-{
-    return this->listenerFd;
-}
-void StreamServer::OnNoAccept(const char *clientIP)
-{
-    logger->warning("Unable to accept connection from client %s on port %d for service %s", clientIP, listenPort, serviceName.c_str());
+    this->clients->clear();
 }
 
 void StreamServer::OnStreaming(const char *clientIP, int clientPort)
 {
     logger->info("Streaming %s to %s:%d", serviceName.c_str(), clientIP, clientPort);
-}
-static void listener(StreamServer *streamServer)
-{
-    while (streamServer->IsActive())
-    {
-        struct sockaddr_in clientAddr;
-        socklen_t len = sizeof(clientAddr);
-
-        int connFd = accept(streamServer->GetListenerDescriptor(), (struct sockaddr *)&clientAddr, &len);
-        if (!streamServer->IsActive())
-            return;
-
-        if (connFd < 0)
-        {
-            streamServer->OnNoAccept(inet_ntoa(clientAddr.sin_addr));
-        }
-        else
-        {
-            char *port_buffer = (char *)malloc(sizeof(char) * 1024);
-            bzero(port_buffer, 1024);
-            recv(connFd, port_buffer, 1024, 0);
-            int clientPort = atoi(port_buffer);
-
-            char *ip = inet_ntoa(clientAddr.sin_addr);
-
-            if (!streamServer->CheckOutputStreamExists(ip, clientPort))
-            {
-                streamServer->CreateOutputStream(ip, clientPort);
-                streamServer->OnStreaming(ip, clientPort);
-            }
-            close(connFd);
-        }
-    }
 }
 
 bool StreamServer::CheckOutputStreamExists(const char *clientIP, int clientPort)
@@ -119,7 +78,6 @@ bool StreamServer::CheckOutputStreamExists(const char *clientIP, int clientPort)
     }
     return false;
 }
-
 void StreamServer::CreateOutputStream(const char *clientIP, int clientPort)
 {
     int len = 1024;
@@ -142,7 +100,7 @@ void StreamServer::CreateOutputStream(const char *clientIP, int clientPort)
 void StreamServer::NewFrame(SourceImageFormat *frame, uint32_t width, uint32_t height)
 {
 
-    if (!active || this->clients->size() == 0)
+    if (this->clients->size() == 0)
         return;
 
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
@@ -172,8 +130,7 @@ void StreamServer::NewFrame(SourceImageFormat *frame, uint32_t width, uint32_t h
 }
 void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
 {
-
-    if (!active || this->clients->size() == 0)
+    if (this->clients->size() == 0)
         return;
 
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
@@ -188,9 +145,10 @@ void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
         }
 
         uint32_t n = width * height;
-        uchar3 * p = (uchar3 *)malloc(sizeof(uchar3)*n);
-        
-        for (uint32_t i = 0; i < n; i++) {
+        uchar3 *p = (uchar3 *)malloc(sizeof(uchar3) * n);
+
+        for (uint32_t i = 0; i < n; i++)
+        {
             p[i].x = (uchar)frame[i];
             p[i].y = 0;
             p[i].z = 0;
@@ -213,34 +171,43 @@ void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
     }
 }
 
-void StreamServer::Stop()
+void StreamServer::RemoveOutputStream(const char *clientIP, int clientPort)
 {
-    if (!active || this->clients->size() == 0)
-        return;
-
-    active = false;
-    close(listenerFd);
-
-    for (ClientConnection *sc : *this->clients)
+    int pos = 0;
+    for (auto it = this->clients->begin(); it != this->clients->end(); it++)
     {
-        sc->stream->Close();
-        delete sc;
+        if (strcmp((*it)->clientIP, clientIP) == 0 && (*it)->clientPort == clientPort)
+        {
+            (*it)->stream->Close();
+            this->clients->erase(it);
+            return;
+        }
+        pos++;
     }
-
-    this->clients->clear();
 }
 
-void StreamServer::Wait()
+void StreamServer::onReceived(std::string topic, std::string payload)
 {
-    if (main == nullptr)
-        return;
-    main->join();
-}
+    json s = json::parse(payload);
 
-StreamServer::~StreamServer()
-{
-    if (main != nullptr)
-        Stop();
+    std::string ip = s["ip"].get<std::string>();
+    int port = s["port"].get<int>();
+    bool add = s["enable"].get<bool>();
 
-    delete clients;
+    printf("received stream request: %s, %d (%s)\n", ip.c_str(), port, add ? "add" : "del");
+
+    if (add)
+    {
+        if (CheckOutputStreamExists(ip.c_str(), port)) {
+            logger->publishServingStream(ip.c_str(), port);            
+            return;
+        }
+
+        CreateOutputStream(ip.c_str(), port);
+        logger->publishServingStream(ip.c_str(), port);
+    }
+    else
+    {
+        RemoveOutputStream(ip.c_str(), port);
+    }
 }

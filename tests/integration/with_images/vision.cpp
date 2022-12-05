@@ -75,12 +75,15 @@ int main(int argc, char **argv)
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
 
     segNet *net = segNet::Create(nullptr,
-                                 "net/hrnet_w18.onnx",
+                                // "net/rtkmodel_test.onnx",
+                                  "net/hrnet_w18.onnx",
                                  "net/classes.txt",
                                  "net/colors.txt",
-                                 "input.1",
-                                 "3545",                                
-                                 10,
+                                  "input.1",
+                                  "3545",
+                                //"input",
+                                //"output",
+                                 1,
                                  precisionType::TYPE_FP16,
                                  deviceType::DEVICE_GPU,
                                  false);

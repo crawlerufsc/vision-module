@@ -57,7 +57,7 @@ void sig_handler(int val)
 
 int main(int argc, char **argv)
 {
-    SourceCamera *camera = new SourceVideoDatasetImpl("/home/nvidia/Mestrado/Project/20210603_162058.mp4",800,600);
+    SourceCamera *camera = new SourceVideoDatasetImpl("/home/nvidia/20210603_162058.mp4",800,600);
 
     OccupancyGrid<SourceImageFormat> *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 

@@ -10,7 +10,11 @@ public:
     virtual void info(const char *format, ...) {}
     virtual void warning(const char *format, ...) {}
     virtual void error(const char *format, ...) {}
-    virtual void critical(const char *format, ...) {};
+    virtual void critical(const char *format, ...) {}
+
+    virtual void publishCameraStatus(bool status) {}
+    virtual void publishModuleStatus(bool status) {}
+    virtual void publishServingStream(const char *targetIP, int targetPort) {}
 };
 
 #endif

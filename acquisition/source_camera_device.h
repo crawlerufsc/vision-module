@@ -87,6 +87,11 @@ public:
         }
     }
 
+    bool IsAvailable() override
+    {
+        return available;
+    }
+
     ~SourceCameraDeviceImpl()
     {
         Close();
@@ -130,7 +135,7 @@ public:
         return (void *)imgptr;
     }
 
-    float * CaptureRGBA(uint64_t timeout = UINT64_MAX) override
+    float *CaptureRGBA(uint64_t timeout = UINT64_MAX) override
     {
         if (!available)
             LogError("camera not available\n");

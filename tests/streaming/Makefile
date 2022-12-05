@@ -3,6 +3,7 @@ all:
 	mkdir  -p build
 	cd build && cmake ..
 	cd build && make
+	mv build/stream_tst .
 
 clean:
 	rm -rf build

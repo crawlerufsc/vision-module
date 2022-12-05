@@ -5,32 +5,29 @@
 #include <string.h>
 
 #include "../../acquisition/source_image_dataset.h"
-#include "../../segmentation/neuralnet_segmentation.h"
+#include "../../segmentation/neuralnet_segmentation_pipeline.h"
 #include "../../occupancy_grid/occupancy_grid.h"
 #include "../../control/process_handler.h"
 #include "../../log/logger.h"
 
 using namespace std;
 
-class NeuralNetVisionTest : NeuralNetVision
+class NeuralNetVisionTest : public NeuralNetSegmentationPipeline<SourceImageFormat>
 {
 public:
-    NeuralNetVisionTest(SourceCamera *input, segNet *net, OccupancyGrid *ocgrid, ProcHandler *procHandler, Logger *logger) : NeuralNetVision(input, net, ocgrid, procHandler, logger)
+    NeuralNetVisionTest(SourceCamera *input, segNet *net, OccupancyGrid<SourceImageFormat> *ocgrid, ProcHandler *procHandler, Logger *logger) : NeuralNetSegmentationPipeline<SourceImageFormat>(input, net, ocgrid, procHandler, logger)
     {
     }
     void TestLoop()
     {
-        this->loop();
+        this->run();
     }
 };
 
-class DummyOccupancyGrid : public OccupancyGrid
+class DummyOccupancyGrid : public OccupancyGrid<SourceImageFormat>
 {
 public:
-    char *ComputeOcuppancyGrid(void *frame, int width, int height) override
-    {
-        return nullptr;
-    };
+    void ComputeOcuppancyGrid(void *frame, int width, int height) override{};
 
     int GetWidth() override
     {
@@ -40,35 +37,24 @@ public:
     {
         return 0;
     }
+    SourceImageFormat *GetResult() override
+    {
+        return nullptr;
+    }
 };
 
 class DummyProcHandler : public ProcHandler
 {
 public:
-    void FrameSkipCaptureError() override
-    {
-    }
-    void FrameSkipMemoryFault() override
-    {
-    }
-    void FrameSkipNetError() override
-    {
-    }
-    virtual void FrameSkipSegmentationOverlayError() override
-    {
-    }
-    virtual void FrameSkipSegmentationMaskError() override
-    {
-    }
-    virtual void FrameProcessResult(uchar3 *result_value, uint32_t width, uint32_t height) override
-    {
-    }
-    virtual void FrameCaptured(SourceImageFormat *result_value, uint32_t width, uint32_t height) override
-    {
-    }
-    virtual void FrameSegmentationSuccess(SourceImageFormat *result_value, uint32_t width, uint32_t height) override {
-
-    }
+    void FrameSkipCaptureError() {}
+    void FrameSkipMemoryFault() {}
+    void FrameSkipNetError() {}
+    void FrameSkipSegmentationOverlayError() {}
+    void FrameSkipSegmentationMaskError() {}
+    void FrameMask(uchar3 *result_value, uint32_t width, uint32_t height) {}
+    void FrameOccupancyGrid(uchar3 *result_value, uint32_t width, uint32_t height) {}
+    void FrameCaptured(SourceImageFormat *result_value, uint32_t width, uint32_t height) {}
+    void FrameSegmentation(SourceImageFormat *result_value, uint32_t width, uint32_t height) {}
 };
 
 extern Logger *NewDebugLoggerInstance();
@@ -82,12 +68,17 @@ int main(int argc, char **argv)
         ->AddSource("../../imgs/2.png");
 
     segNet *net = segNet::Create(nullptr,
-                                 "net/hrnet_w18.onnx",
-                                 "net/classes.txt",
-                                 "net/colors.txt",
-                                 "input.1",
-                                 "3545",
-                                 1000,
+                                 //  "net/hrnet_w18.onnx",
+                                 // "net/classes.txt",
+                                 // "net/colors.txt",
+                                 //"input.1",
+                                 //"3545",
+                                 "net/rtkmodel_test.onnx",
+                                 "net/rtkmodel_test_classes.txt",
+                                 "net/rtkmodel_test_colors.txt",
+                                 "input",
+                                 "output",
+                                 1,
                                  precisionType::TYPE_INT8,
                                  deviceType::DEVICE_GPU,
                                  true);

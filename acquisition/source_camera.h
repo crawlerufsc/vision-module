@@ -15,6 +15,7 @@ public:
     virtual bool IsStreaming() = 0;
     virtual void Close() = 0;
     virtual void initWithOptions(videoOptions &options) = 0;
+    virtual bool IsAvailable() = 0;
 
 };
 

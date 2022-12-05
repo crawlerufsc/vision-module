@@ -32,8 +32,8 @@ SET(TARGET_H
     ../../acquisition/source_camera.h
     ../../acquisition/source_camera_gst.h
     ../../acquisition/source_dataset.h
-    ../../segmentation/neuralnet_segmentation.h
-    ../../segmentation/neuralnet_segmentation.h
+    ../../segmentation/neuralnet_segmentation_pipeline.h
+    ../../segmentation/neuralnet_segmentation_pipeline.h
     ../../occupancy_grid/occupancy_grid.h
     ../../control/process_handler.h
     ../../log/logger.h
@@ -42,7 +42,7 @@ SET(TARGET_H
 cuda_add_executable(aqtst 
     neuralnet_segmentation_test.cpp 
     ../../log/logger_debug_stdout.cpp 
-    ../../segmentation/neuralnet_segmentation.cpp
+    ../../segmentation/neuralnet_segmentation_pipeline.cpp
 )
 
 # link my-recognition to jetson-inference library

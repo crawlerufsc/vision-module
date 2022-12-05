@@ -32,13 +32,15 @@ using namespace cv;
 using namespace chrono;
 
 #define DEBUG 1
+#define MqttHost "10.0.0.4"
+#define MqttPort 1883
 
 extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
 ProcessPipeline<SourceImageFormat> *visionProc;
 
 #ifdef DEBUG
-extern Logger *NewDebugLoggerInstance();
-Logger *logger = NewDebugLoggerInstance();
+extern Logger *NewPubSubLoggerInstance(const char *hostIp, int port);
+Logger *logger = NewPubSubLoggerInstance(MqttHost, MqttPort);
 #else
 Logger *logger = new Logger();
 #endif
@@ -54,30 +56,66 @@ void sig_handler(int val)
 
 int main(int argc, char **argv)
 {
-    SourceCamera *camera = SourceCameraUSBImpl::begin()
-                               ->device("/dev/video1")
-                               ->withSize(640, 480)
-                               ->build();
+    SourceCamera *camera = nullptr;
+
+    logger->publishModuleStatus(false);
+    logger->publishCameraStatus(false);
+
+    while (camera == nullptr)
+    {
+        camera = SourceCameraUSBImpl::begin()
+                     ->device("/dev/video0")
+                     ->withSize(640, 480)
+                     ->build();
+
+        if (!camera->IsAvailable())
+        {
+            logger->error("The camera device is not properly connected");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            delete camera;
+            camera = nullptr;
+        }
+    }
+
+    logger->info("camera initialized");
+    logger->publishCameraStatus(true);
 
     OccupancyGrid<SourceImageFormat> *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 
     ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
 
+    // segNet *net = segNet::Create(nullptr,
+    //                              "net/rtkmodel_test.onnx",
+    //                              "net/classes.txt",
+    //                              "net/colors.txt",
+    //                              "data",
+    //                              "score_fr_21_classes",
+    //                              10,
+    //                              precisionType::TYPE_FP16,
+    //                              deviceType::DEVICE_GPU,
+    //                              true);
+
+    logger->info("initializing segmentation neural network");
+
     segNet *net = segNet::Create(nullptr,
                                  "net/hrnet_w18.onnx",
                                  "net/classes.txt",
                                  "net/colors.txt",
-                                 "data",
-                                 "score_fr_21_classes",
+                                 "input.1",
+                                 "3545",
                                  10,
                                  precisionType::TYPE_FP16,
                                  deviceType::DEVICE_GPU,
-                                 true);
+                                 false);
 
     visionProc = new NeuralNetSegmentationPipeline<SourceImageFormat>(camera, net, computeOG, procHandler, logger);
 
     if (signal(SIGINT, sig_handler) == SIG_ERR)
         LogError("can't catch SIGINT\n");
+
+
+    logger->info("serving vision");
+    logger->publishModuleStatus(true);
 
     visionProc->run();
     return 0;

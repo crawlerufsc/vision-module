@@ -1,0 +1,12 @@
+background
+roadAsphalt
+roadPaved
+roadUnpaved
+roadMarking
+speedBump
+catsEye
+stormDrain
+patchs
+waterPuddle
+pothole
+cracks

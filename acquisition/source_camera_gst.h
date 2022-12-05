@@ -86,6 +86,10 @@ public:
         delete input;
     }
 
+    bool IsAvailable() override {
+        return available;
+    }
+
     uint32_t GetWidth() override
     {
         if (!available)

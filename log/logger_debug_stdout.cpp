@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 
+
 #include "logger.h"
 
 using namespace std;
@@ -48,6 +49,19 @@ public:
         fprintf(stderr, "\n");
         exit(-1);
     };
+
+    void publishCameraStatus(bool status) override
+    {
+        fprintf(stdout, "Camera status: %s", status ? "Active" : "Inactive");
+    }
+    void publishModuleStatus(bool status) override
+    {
+        fprintf(stdout, "Vision module status: %s", status ? "Active" : "Inactive");
+    }
+    void publishServingStream(const char *targetIP, int targetPort) override
+    {
+
+    }
 };
 
-Logger * NewDebugLoggerInstance() { return new DebugLogger(); }
+Logger *NewDebugLoggerInstance() { return new DebugLogger(); }

@@ -53,7 +53,7 @@ bool NeuralNetSegmentationPipeline<T>::processSegmentation(T *frame)
         return false;
     }
 
-    logger->info("neuralnet: frame processed");
+    //logger->info("neuralnet: frame processed");
 
     // generate overlay
     if (!net->Overlay(imgOverlay, overlaySize.x, overlaySize.y, filterMode))
@@ -63,7 +63,7 @@ bool NeuralNetSegmentationPipeline<T>::processSegmentation(T *frame)
         return false;
     }
 
-    logger->info("neuralnet: overlay");
+    //logger->info("neuralnet: overlay");
 
     // generate mask
     if (!net->Mask(imgMask, maskSize.x, maskSize.y, filterMode))
@@ -72,7 +72,7 @@ bool NeuralNetSegmentationPipeline<T>::processSegmentation(T *frame)
         logger->error("the neuralnet failed to process segmentation mask");
         return false;
     }
-    logger->info("neuralnet: mask");
+    //logger->info("neuralnet: mask");
 
     CUDA(cudaDeviceSynchronize());
     return true;
@@ -84,13 +84,13 @@ void NeuralNetSegmentationPipeline<T>::process(T *frame)
     if (!processSegmentation(frame))
         return;
 
-    logger->info("frame processed");
+    //logger->info("frame processed");
     procHandler->FrameSegmentation(imgOverlay, overlaySize.x, overlaySize.y);
     procHandler->FrameMask(imgMask, maskSize.x, maskSize.y);
 
     ocgrid->ComputeOcuppancyGrid(imgMask, ocgrid->GetWidth(), ocgrid->GetHeight());
 
-    logger->info("OG computed");
+    //logger->info("OG computed");
     procHandler->FrameOccupancyGrid(ocgrid->GetResult(), ocgrid->GetWidth(), ocgrid->GetHeight());
 }
 

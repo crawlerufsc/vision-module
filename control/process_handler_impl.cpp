@@ -3,6 +3,9 @@
 
 #include <jetson-utils/cudaMappedMemory.h>
 
+#define MqttHost "10.0.0.4"
+#define MqttPort 1883
+
 class ProcHandlerImpl : public ProcHandler
 {
     Logger *logger;
@@ -11,19 +14,18 @@ class ProcHandlerImpl : public ProcHandler
     StreamServer *maskFrameStreamServer;
     StreamServer *occupancyGridStreamServer;
 
-
 private:
     void buildStreamServers()
     {
-        originalFrameStreamServer = new StreamServer("OriginalImageStream", 20000, logger);
-        segmentedFrameStreamServer = new StreamServer("SegmentedFrameStream", 20001, logger);
-        maskFrameStreamServer = new StreamServer("MaskFrameStream", 20002, logger);
-        occupancyGridStreamServer = new StreamServer("OGStream", 20003, logger);
+        originalFrameStreamServer = new StreamServer("OriginalImageStream", "/vision-module/cmd/original", logger, MqttHost, MqttPort);
+        segmentedFrameStreamServer = new StreamServer("SegmentedFrameStream", "/vision-module/cmd/segmented", logger, MqttHost, MqttPort);
+        maskFrameStreamServer = new StreamServer("MaskFrameStream", "/vision-module/cmd/mask", logger, MqttHost, MqttPort);
+        occupancyGridStreamServer = new StreamServer("OGStream", "/vision-module/cmd/og", logger, MqttHost, MqttPort);
 
-        originalFrameStreamServer->Start();
-        segmentedFrameStreamServer->Start();
-        maskFrameStreamServer->Start();
-        occupancyGridStreamServer->Start();
+        // originalFrameStreamServer->Start(2000);
+        // segmentedFrameStreamServer->Start(2000);
+        // maskFrameStreamServer->Start(2000);
+        // occupancyGridStreamServer->Start(2000);
     }
     void destroyStreamServers()
     {
