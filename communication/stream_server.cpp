@@ -22,31 +22,6 @@ StreamServer::~StreamServer()
     delete clients;
 }
 
-// char *StreamServer::buildDefaultTopic(std::string serviceName)
-// {
-//     int p = strlen(VISION_CMD_TOPIC);
-//     int size = sizeof(char) * (p   + serviceName.size() + 2);
-//     char *topic = new char(size);
-//     memcpy(topic, VISION_CMD_TOPIC, sizeof(char) * p );
-//     topic[p + 1] = '/';
-
-//     for (int i = 0; i < this->serviceName.size(); i++)
-//         topic[p  + i] = this->serviceName[i];
-
-//     topic[size] = 0;
-
-//     return topic;
-// }
-
-// void StreamServer::Start(int timeout_ms)
-// {
-//     while (!isConnected() || timeout_ms <= 0) {
-//         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-//         timeout_ms -= 10;
-//     }
-//     subscribeTo(buildDefaultTopic(serviceName));
-// }
-
 void StreamServer::onStop()
 {
     if (this->clients->size() == 0)
@@ -188,26 +163,34 @@ void StreamServer::RemoveOutputStream(const char *clientIP, int clientPort)
 
 void StreamServer::onReceived(std::string topic, std::string payload)
 {
-    json s = json::parse(payload);
-
-    std::string ip = s["ip"].get<std::string>();
-    int port = s["port"].get<int>();
-    bool add = s["enable"].get<bool>();
-
-    printf("received stream request: %s, %d (%s)\n", ip.c_str(), port, add ? "add" : "del");
-
-    if (add)
+    try
     {
-        if (CheckOutputStreamExists(ip.c_str(), port)) {
-            logger->publishServingStream(ip.c_str(), port);            
-            return;
+        json s = json::parse(payload);
+
+        std::string ip = s["ip"].get<std::string>();
+        int port = s["port"].get<int>();
+        bool add = s["enable"].get<bool>();
+
+        printf("received stream request: %s, %d (%s)\n", ip.c_str(), port, add ? "add" : "del");
+
+        if (add)
+        {
+            if (CheckOutputStreamExists(ip.c_str(), port))
+            {
+                logger->publishServingStream(ip.c_str(), port);
+                return;
+            }
+
+            CreateOutputStream(ip.c_str(), port);
+            logger->publishServingStream(ip.c_str(), port);
         }
-
-        CreateOutputStream(ip.c_str(), port);
-        logger->publishServingStream(ip.c_str(), port);
+        else
+        {
+            RemoveOutputStream(ip.c_str(), port);
+        }
     }
-    else
+    catch (nlohmann::json_abi_v3_11_2::detail::type_error &ex)
     {
-        RemoveOutputStream(ip.c_str(), port);
+        printf("invalid request for streaming: %s\n", payload.c_str());
     }
 }

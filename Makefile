@@ -8,7 +8,7 @@ bin:
 	cp neuralnet/trained/rtkmodel_test.onnx build/net
 	cp neuralnet/trained/hrnet_w18.onnx build/net
 	cd build && cmake ..
-	cd build && make -j4
+	cd build && make -j$(nproc)
 	cp build/vision-bin .
 	cp -R build/net .
 	rm -rf build

@@ -32,10 +32,10 @@ using namespace cv;
 using namespace chrono;
 
 #define DEBUG 1
-#define MqttHost "10.0.0.4"
+#define MqttHost "10.42.1.1"
 #define MqttPort 1883
 
-extern ProcHandler *NewProcHandlerImplInstance(Logger *logger);
+extern ProcHandler *NewProcHandlerImplInstance(Logger *logger, const char *pubSubHost, int pubSubPort);
 ProcessPipeline<SourceImageFormat> *visionProc;
 
 #ifdef DEBUG
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 
     OccupancyGrid<SourceImageFormat> *computeOG = new OccupancyGridImpl<SourceImageFormat>();
 
-    ProcHandler *procHandler = NewProcHandlerImplInstance(logger);
+    ProcHandler *procHandler = NewProcHandlerImplInstance(logger, MqttHost, MqttPort);
 
     // segNet *net = segNet::Create(nullptr,
     //                              "net/rtkmodel_test.onnx",

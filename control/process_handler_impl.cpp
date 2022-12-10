@@ -3,9 +3,6 @@
 
 #include <jetson-utils/cudaMappedMemory.h>
 
-#define MqttHost "10.0.0.4"
-#define MqttPort 1883
-
 class ProcHandlerImpl : public ProcHandler
 {
     Logger *logger;
@@ -15,12 +12,12 @@ class ProcHandlerImpl : public ProcHandler
     StreamServer *occupancyGridStreamServer;
 
 private:
-    void buildStreamServers()
+    void buildStreamServers(const char *pubSubHost, int pubSubPort)
     {
-        originalFrameStreamServer = new StreamServer("OriginalImageStream", "/vision-module/cmd/original", logger, MqttHost, MqttPort);
-        segmentedFrameStreamServer = new StreamServer("SegmentedFrameStream", "/vision-module/cmd/segmented", logger, MqttHost, MqttPort);
-        maskFrameStreamServer = new StreamServer("MaskFrameStream", "/vision-module/cmd/mask", logger, MqttHost, MqttPort);
-        occupancyGridStreamServer = new StreamServer("OGStream", "/vision-module/cmd/og", logger, MqttHost, MqttPort);
+        originalFrameStreamServer = new StreamServer("OriginalImageStream", "/vision-module/cmd/original", logger, pubSubHost, pubSubPort);
+        segmentedFrameStreamServer = new StreamServer("SegmentedFrameStream", "/vision-module/cmd/segmented", logger, pubSubHost, pubSubPort);
+        maskFrameStreamServer = new StreamServer("MaskFrameStream", "/vision-module/cmd/mask", logger, pubSubHost, pubSubPort);
+        occupancyGridStreamServer = new StreamServer("OGStream", "/vision-module/cmd/og", logger, pubSubHost, pubSubPort);
 
         // originalFrameStreamServer->Start(2000);
         // segmentedFrameStreamServer->Start(2000);
@@ -40,10 +37,10 @@ private:
     }
 
 public:
-    ProcHandlerImpl(Logger *logger)
+    ProcHandlerImpl(Logger *logger, const char *pubSubHost, int pubSubPort)
     {
         this->logger = logger;
-        buildStreamServers();
+        buildStreamServers(pubSubHost, pubSubPort);
     }
 
     ~ProcHandlerImpl()
@@ -84,4 +81,4 @@ public:
     }
 };
 
-ProcHandler *NewProcHandlerImplInstance(Logger *logger) { return new ProcHandlerImpl(logger); }
+ProcHandler *NewProcHandlerImplInstance(Logger *logger, const char *pubSubHost, int pubSubPort) { return new ProcHandlerImpl(logger, pubSubHost, pubSubPort); }

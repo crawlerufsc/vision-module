@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <thread>
 
+//https://raspberrypi.stackexchange.com/questions/84709/routing-or-bridging-to-connect-eth0-and-wlan0
 #define VISION_CMD_TOPIC ""
 
 using nlohmann::json;
@@ -31,7 +32,7 @@ int main (int argc, char **argv) {
         exit(1);
     }
 
-    StreamRequester requester("10.0.0.4");
+    StreamRequester requester("10.42.0.1");
 
     json j1 {
         {"ip", argv[1]},
