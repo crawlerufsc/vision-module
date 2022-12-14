@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <mutex>
 
 #include "../log/logger.h"
 #include "../control/process_handler.h"
@@ -50,6 +51,7 @@ private:
     vector<ClientConnection *> *clients;
     Logger *logger;
     string serviceName;
+    std::mutex *newFrameMtx;
 
     void OnStreaming(const char *clientIP, int clientPort);
     bool CheckOutputStreamExists(const char *clientIP, int clientPort);

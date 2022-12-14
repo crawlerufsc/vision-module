@@ -12,6 +12,7 @@ StreamServer::StreamServer(string serviceName, const char *topic, Logger *logger
     this->serviceName = serviceName;
     this->logger = logger;
     this->clients = new vector<ClientConnection *>();
+    this->newFrameMtx = new std::mutex();
 }
 
 StreamServer::~StreamServer()
@@ -19,21 +20,29 @@ StreamServer::~StreamServer()
     if (isConnected())
         Stop();
 
-    delete clients;
+    onStop();
+
+    delete this->clients;
+    delete this->newFrameMtx;
 }
 
 void StreamServer::onStop()
 {
-    if (this->clients->size() == 0)
-        return;
+    this->newFrameMtx->lock();
 
-    for (ClientConnection *sc : *this->clients)
+    if (this->clients->size() > 0)
     {
-        sc->stream->Close();
-        delete sc;
+
+        for (ClientConnection *sc : *this->clients)
+        {
+            sc->stream->Close();
+            delete sc;
+        }
+
+        this->clients->clear();
     }
 
-    this->clients->clear();
+    this->newFrameMtx->unlock();
 }
 
 void StreamServer::OnStreaming(const char *clientIP, int clientPort)
@@ -69,15 +78,22 @@ void StreamServer::CreateOutputStream(const char *clientIP, int clientPort)
     options.codec = videoOptions::CODEC_H264;
     ClientConnection *sc = new ClientConnection(clientIP, clientPort, videoOutput::Create(uri, options));
 
+    this->newFrameMtx->lock();
     this->clients->push_back(sc);
+    this->newFrameMtx->unlock();
 }
 
 void StreamServer::NewFrame(SourceImageFormat *frame, uint32_t width, uint32_t height)
 {
 
+    this->newFrameMtx->lock();
     if (this->clients->size() == 0)
+    {
+        this->newFrameMtx->unlock();
         return;
+    }
 
+    this->newFrameMtx->lock();
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
     {
         ClientConnection *sc = *itr;
@@ -102,12 +118,18 @@ void StreamServer::NewFrame(SourceImageFormat *frame, uint32_t width, uint32_t h
             delete sc;
         }
     }
+    this->newFrameMtx->unlock();
 }
 void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
 {
+    this->newFrameMtx->lock();
     if (this->clients->size() == 0)
+    {
+        this->newFrameMtx->unlock();
         return;
+    }
 
+    this->newFrameMtx->lock();
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
     {
         ClientConnection *sc = *itr;
@@ -144,21 +166,25 @@ void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
 
         delete p;
     }
+    this->newFrameMtx->unlock();
 }
 
 void StreamServer::RemoveOutputStream(const char *clientIP, int clientPort)
 {
     int pos = 0;
+    this->newFrameMtx->lock();
     for (auto it = this->clients->begin(); it != this->clients->end(); it++)
     {
         if (strcmp((*it)->clientIP, clientIP) == 0 && (*it)->clientPort == clientPort)
         {
             (*it)->stream->Close();
             this->clients->erase(it);
+            this->newFrameMtx->unlock();
             return;
         }
         pos++;
     }
+    this->newFrameMtx->unlock();
 }
 
 void StreamServer::onReceived(std::string topic, std::string payload)
