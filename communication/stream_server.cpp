@@ -93,7 +93,6 @@ void StreamServer::NewFrame(SourceImageFormat *frame, uint32_t width, uint32_t h
         return;
     }
 
-    this->newFrameMtx->lock();
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
     {
         ClientConnection *sc = *itr;
@@ -129,7 +128,6 @@ void StreamServer::NewFrame(char *frame, uint32_t width, uint32_t height)
         return;
     }
 
-    this->newFrameMtx->lock();
     for (std::vector<ClientConnection *>::iterator itr = this->clients->begin(); itr != this->clients->end(); ++itr)
     {
         ClientConnection *sc = *itr;
