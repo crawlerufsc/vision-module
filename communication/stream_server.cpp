@@ -73,7 +73,7 @@ void StreamServer::CreateOutputStream(const char *clientIP, int clientPort)
     options.width = 800;
     options.height = 600;
     options.zeroCopy = true;
-    options.deviceType = videoOptions::DEVICE_FILE;
+    options.deviceType = videoOptions::DEVICE_IP;
     options.ioType = videoOptions::OUTPUT;
     options.codec = videoOptions::CODEC_H264;
     ClientConnection *sc = new ClientConnection(clientIP, clientPort, videoOutput::Create(uri, options));
